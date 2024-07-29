@@ -273,7 +273,10 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
 
               function writeCharacteristicValueCallBack(code: BusinessError) {
                 if (code != null) {
+                  reject(code)
                   return;
+                } else {
+                  resolve();
                 }
               }
 
@@ -282,10 +285,10 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
                 let device: ble.GattClientDevice = per.getDevice();
                 device.writeCharacteristicValue(characteristic, ble.GattWriteType.WRITE,
                   writeCharacteristicValueCallBack);
-                resolve();
+                // resolve();
               } catch (error) {
                 reject('errCode: ' + (error as BusinessError).code + ', errMessage: ' +
-                (error as BusinessError).message);
+                  (error as BusinessError).message);
               }
             }
           })
@@ -376,7 +379,7 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
       return Promise.resolve(perList);
     } catch (err) {
       return Promise.reject('errCode: ' + (err as BusinessError).code + ', errMessage: ' +
-      (err as BusinessError).message)
+        (err as BusinessError).message)
     }
   }
 
@@ -410,12 +413,17 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
       peripheral.retrieveServices(peripheralId, serviceUUIDs).then((result: Array<ble.GattService>) => {
         if (result.length > 0) {
           const newArray = result.filter(item => {
-            if (item.characteristics[0].descriptors.length > 0) {
-              if (serviceUUIDs.includes(item.serviceUuid) &&
-              serviceUUIDs.includes(item.characteristics[0].descriptors[0].serviceUuid)) {
-                return item;
+            if (serviceUUIDs.length > 0) {
+              if (item.characteristics[0].descriptors.length > 0) {
+                if (serviceUUIDs.includes(item.serviceUuid) &&
+                  serviceUUIDs.includes(item.characteristics[0].descriptors[0].serviceUuid)) {
+                  return item;
+                }
               }
+            } else {
+              return true;
             }
+
           })
           const perinfoServiceUUIDs = [];
           const perinfoCharacteristics = [];
@@ -430,7 +438,12 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
               const character: Characteristic = {
                 characteristic: r.characteristicUuid,
                 service: r.serviceUuid,
-                descriptors: [perinfoDescriptor]
+                descriptors: [perinfoDescriptor],
+                properties: {
+                  Write: r.properties?.write ? "Write" : undefined,
+                  Notify: r.properties?.notify ? "Notify" : undefined,
+                  Read: r.properties?.read ? "Read" : undefined
+                }
               }
               perinfoCharacteristics.push(character)
             })
@@ -488,12 +501,12 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
 
   start(options: StartOptions): Promise<void> {
     Logger.info("start")
-    this.startAdvertising()
-    this.addService()
+    // this.startAdvertising()
+    // this.addService()
     this.onCharacteristicWrite()
     this.onCharacteristicRead()
-    this.onDescriptorWrite()
-    this.onDescriptorRead()
+    // this.onDescriptorWrite()
+    // this.onDescriptorRead()
     this.scanManager = new DefaultScanManager(this.ctx, this)
     access.on('stateChange', this.onStateChange.bind(this));
     connection.on('bondStateChange', this.onBondStateChange.bind(this));
@@ -723,21 +736,29 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
   retrieveOrCreatePeripheral(peripheralId: string) {
     let peripheralData = this.peripherals.get(peripheralId);
     if (peripheralData === null || peripheralData === undefined) {
-      if (peripheralId) {
-        peripheralId = peripheralId.toLowerCase();
-      }
+      // if (peripheralId) {
+      //   peripheralId = peripheralId.toLowerCase();
+      // }
       ;
       if (this.isBluetoothAddress(peripheralId)) {
         try {
           let device: ble.GattClientDevice = ble.createGattClientDevice(peripheralId);
           peripheralData = new PeripheralData(this.ctx, device);
+          peripheralData.setDeviceId(peripheralId);
+          device.getDeviceName().then(name => {
+            peripheralData.setDeviceName(name);
+          })
+          peripheralData.setConnected(true);
+          device.getRssiValue().then((rssi) => {
+            peripheralData.setRssi(rssi)
+          })
           this.peripherals.set(peripheralId, peripheralData);
           device.connect()
+
         } catch (error) {
           Logger.error(JSON.stringify(error))
         }
       }
-      ;
     }
     ;
     return peripheralData;
@@ -761,7 +782,7 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
       }
     } catch (err) {
       Logger.error(TAG, 'bleCharacteristicChange errCode: ' + (err as BusinessError).code + ', errMessage: ' +
-      (err as BusinessError).message);
+        (err as BusinessError).message);
     }
   }
 
@@ -820,7 +841,7 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
       });
     } catch (err) {
       Logger.error(TAG, 'ble server startAdvertising errCode: ' + (err as BusinessError).code + ', errMessage: ' +
-      (err as BusinessError).message);
+        (err as BusinessError).message);
     }
   }
 
@@ -873,7 +894,7 @@ export class BleTurboModule extends TurboModule implements TM.ReactNativeBleMana
       this.gattServer.addService(gattService);
     } catch (err) {
       Logger.error(TAG, 'ble server addService errCode: ' + (err as BusinessError).code + ', errMessage: ' +
-      (err as BusinessError).message);
+        (err as BusinessError).message);
     }
   }
 

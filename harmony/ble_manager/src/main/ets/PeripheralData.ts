@@ -188,7 +188,7 @@ export default class PeripheralData {
         return Promise.resolve(mtu)
       } catch (err) {
         return Promise.reject('errCode: ' + (err as BusinessError).code + ', errMessage: ' +
-        (err as BusinessError).message)
+          (err as BusinessError).message)
       }
     }
   }
